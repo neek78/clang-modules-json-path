@@ -6503,6 +6503,8 @@ std::string Driver::GetStdModuleManifestPath(const Compilation &C,
 
   switch (TC.GetCXXStdlibType(C.getArgs())) {
   case ToolChain::CST_Libcxx: {
+    const char* filename = "libc++.modules.json";
+
     auto evaluate = [&](const char *library) -> std::optional<std::string> {
       std::string lib = GetFilePath(library, TC);
 
@@ -6521,12 +6523,20 @@ std::string Driver::GetStdModuleManifestPath(const Compilation &C,
 
       SmallString<128> path(lib.begin(), lib.end());
       llvm::sys::path::remove_filename(path);
-      llvm::sys::path::append(path, "libc++.modules.json");
+      llvm::sys::path::append(path, filename);
       if (TC.getVFS().exists(path))
         return static_cast<std::string>(path);
 
       return {};
     };
+
+#ifdef LIBCXX_INSTALL_LIBRARY_DIR
+    SmallString<128> configuredPath(LIBCXX_INSTALL_LIBRARY_DIR);
+    llvm::sys::path::append(configuredPath, filename);
+    // llvm::errs() << "YEP " << configuredPath << "\n";
+    if (TC.getVFS().exists(configuredPath))
+      return static_cast<std::string>(configuredPath);
+#endif
 
     if (std::optional<std::string> result = evaluate("libc++.so"); result)
       return *result;

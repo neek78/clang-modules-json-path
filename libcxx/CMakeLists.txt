@@ -15,6 +15,7 @@ list(INSERT CMAKE_MODULE_PATH 0
   "${LLVM_COMMON_CMAKE_UTILS}/Modules"
   )
 
+  #message(FATAL_ERROR "CMCMC ${CMAKE_MODULE_PATH}")
 set(CMAKE_FOLDER "libc++")
 
 set(LIBCXX_SOURCE_DIR  ${CMAKE_CURRENT_SOURCE_DIR})
@@ -414,6 +415,8 @@ set(LIBCXX_INSTALL_MODULES_DIR "share/libc++/v1" CACHE STRING
 set(LIBCXX_SHARED_OUTPUT_NAME "c++" CACHE STRING "Output name for the shared libc++ runtime library.")
 set(LIBCXX_STATIC_OUTPUT_NAME "c++" CACHE STRING "Output name for the static libc++ runtime library.")
 
+include(GetLibCxxInstallDir)
+
 if(LLVM_ENABLE_PER_TARGET_RUNTIME_DIR AND NOT APPLE)
   set(LIBCXX_TARGET_SUBDIR ${LLVM_DEFAULT_TARGET_TRIPLE})
   if(LIBCXX_LIBDIR_SUBDIR)
@@ -423,8 +426,6 @@ if(LLVM_ENABLE_PER_TARGET_RUNTIME_DIR AND NOT APPLE)
   set(LIBCXX_GENERATED_INCLUDE_DIR "${LLVM_BINARY_DIR}/include/c++/v1")
   set(LIBCXX_GENERATED_MODULE_DIR "${LLVM_BINARY_DIR}/modules/c++/v1")
   set(LIBCXX_GENERATED_INCLUDE_TARGET_DIR "${LLVM_BINARY_DIR}/include/${LIBCXX_TARGET_SUBDIR}/c++/v1")
-  set(LIBCXX_INSTALL_LIBRARY_DIR lib${LLVM_LIBDIR_SUFFIX}/${LIBCXX_TARGET_SUBDIR} CACHE STRING
-      "Path where built libc++ libraries should be installed.")
   set(LIBCXX_INSTALL_INCLUDE_TARGET_DIR "${CMAKE_INSTALL_INCLUDEDIR}/${LIBCXX_TARGET_SUBDIR}/c++/v1" CACHE STRING
       "Path where target-specific libc++ headers should be installed.")
   unset(LIBCXX_TARGET_SUBDIR)
@@ -439,11 +440,27 @@ else()
     set(LIBCXX_GENERATED_MODULE_DIR "${CMAKE_BINARY_DIR}/modules/c++/v1")
   endif()
   set(LIBCXX_GENERATED_INCLUDE_TARGET_DIR "${LIBCXX_GENERATED_INCLUDE_DIR}")
-  set(LIBCXX_INSTALL_LIBRARY_DIR lib${LIBCXX_LIBDIR_SUFFIX} CACHE STRING
-      "Path where built libc++ libraries should be installed.")
   set(LIBCXX_INSTALL_INCLUDE_TARGET_DIR "${LIBCXX_INSTALL_INCLUDE_DIR}" CACHE STRING
       "Path where target-specific libc++ headers should be installed.")
 endif()
+
+get_libcxx_install_dir(_dest)
+#message(FATAL_ERROR "${_dest}")
+set(LIBCXX_INSTALL_LIBRARY_DIR ${_dest} CACHE STRING
+  "Path where built libc++ libraries should be installed.")
+unset (_dest)
+
+get_libcxx_modules_manifest_install_dir(_dest)
+#message(FATAL_ERROR "${_dest}")
+set(LIBCXX_MODULES_MANIFEST_DIR ${_dest} CACHE STRING
+  "Path where c++.modules.json should be installed.")
+unset (_dest)
+
+MESSAGE(STATUS "LIBCXX_INSTALL_LIBRARY_DIR ${LIBCXX_INSTALL_LIBRARY_DIR}")
+
+MESSAGE(STATUS "LIBCXX_INSTALL_MODULES_MANIFEST_DIR ${LIBCXX_INSTALL_MODULES_MANIFEST_DIR}")
+
+set(LIBCXX_INSTALL_MODULES_MANIFEST_DIR ${LIBCXX_LIBRARY_DIR})
 
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${LIBCXX_LIBRARY_DIR})
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${LIBCXX_LIBRARY_DIR})
