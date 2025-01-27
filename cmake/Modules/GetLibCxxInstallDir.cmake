@@ -1,6 +1,7 @@
 
 function(get_libcxx_install_dir out_var)
   #FIXME: don't overwrite if already set
+  message(STATUS "UUU ${LLVM_LIBDIR_SUFFIX}")
   set(LIBDIR_SUFFIX "${LLVM_LIBDIR_SUFFIX}")
 
   if(LLVM_ENABLE_PER_TARGET_RUNTIME_DIR AND NOT APPLE)
@@ -16,8 +17,8 @@ function(get_libcxx_install_dir out_var)
   set(${out_var} ${ret_dir} PARENT_SCOPE)
 endfunction()
 
-function(get_libcxx_modules_manifest_install_dir out_var)
-  get_libcxx_install_dir(ret_dir)
-  set(${out_var} ${ret_dir} PARENT_SCOPE)
+function(get_libcxx_modules_manifest_install_dir out)
+  get_libcxx_install_dir(ret)
+  set(${out} ${ret} PARENT_SCOPE)
 endfunction()
 
