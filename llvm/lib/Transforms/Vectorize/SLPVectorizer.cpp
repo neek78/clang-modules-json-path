@@ -3643,6 +3643,8 @@ private:
     }
     if (!Last->isGather()) {
       for (Value *V : VL) {
+        if (isa<PoisonValue>(V))
+          continue;
         const TreeEntry *TE = getTreeEntry(V);
         assert((!TE || TE == Last || doesNotNeedToBeScheduled(V)) &&
                "Scalar already in tree!");
@@ -9031,9 +9033,7 @@ getVectorCallCosts(CallInst *CI, FixedVectorType *VecTy,
   FastMathFlags FMF;
   if (auto *FPCI = dyn_cast<FPMathOperator>(CI))
     FMF = FPCI->getFastMathFlags();
-  SmallVector<const Value *> Arguments(CI->args());
-  IntrinsicCostAttributes CostAttrs(ID, VecTy, Arguments, ArgTys, FMF,
-                                    dyn_cast<IntrinsicInst>(CI));
+  IntrinsicCostAttributes CostAttrs(ID, VecTy, ArgTys, FMF);
   auto IntrinsicCost =
     TTI->getIntrinsicInstrCost(CostAttrs, TTI::TCK_RecipThroughput);
 
