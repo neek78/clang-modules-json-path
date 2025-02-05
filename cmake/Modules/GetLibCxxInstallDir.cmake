@@ -1,6 +1,8 @@
 
 function(get_libcxx_install_dir out_var)
   #FIXME: don't overwrite if already set
+  # if(DEFINED CLANG_RESOURCE_DIR AND NOT CLANG_RESOURCE_DIR STREQUAL "")
+
   message(STATUS "UUU ${LLVM_LIBDIR_SUFFIX} ${LIBDIR_SUFFIX}")
   set(LIBDIR_SUFFIX "${LLVM_LIBDIR_SUFFIX}")
 
