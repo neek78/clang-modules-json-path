@@ -738,6 +738,14 @@ void TextNodeDumper::Visit(const APValue &Value, QualType Ty) {
     else if (const auto *BE = B.dyn_cast<const Expr *>()) {
       OS << BE->getStmtClassName() << ' ';
       dumpPointer(BE);
+    } else if (const auto BTI = B.dyn_cast<TypeInfoLValue>()) {
+      OS << "TypeInfoLValue ";
+      ColorScope Color(OS, ShowColors, TypeColor);
+      BTI.print(OS, PrintPolicy);
+    } else if (B.is<DynamicAllocLValue>()) {
+      OS << "DynamicAllocLValue";
+      auto BDA = B.getDynamicAllocType();
+      dumpType(BDA);
     } else {
       const auto *VDB = B.get<const ValueDecl *>();
       OS << VDB->getDeclKindName() << "Decl";
@@ -821,9 +829,21 @@ void TextNodeDumper::Visit(const APValue &Value, QualType Ty) {
 
     return;
   }
-  case APValue::MemberPointer:
-    OS << "MemberPointer <todo>";
+  case APValue::MemberPointer: {
+    OS << "MemberPointer ";
+    auto Path = Value.getMemberPointerPath();
+    for (const CXXRecordDecl *D : Path) {
+      {
+        ColorScope Color(OS, ShowColors, DeclNameColor);
+        OS << D->getDeclName();
+      }
+      OS << "::";
+    }
+
+    ColorScope Color(OS, ShowColors, DeclNameColor);
+    OS << Value.getMemberPointerDecl()->getDeclName();
     return;
+  }
   case APValue::AddrLabelDiff:
     OS << "AddrLabelDiff <todo>";
     return;

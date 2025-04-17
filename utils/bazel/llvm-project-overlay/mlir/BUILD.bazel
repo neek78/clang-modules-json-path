@@ -1559,20 +1559,28 @@ cc_library(
     hdrs = glob(["include/mlir/Dialect/AMDGPU/Transforms/*.h"]),
     includes = ["include"],
     deps = [
+        ":AffineDialect",
         ":AMDGPUDialect",
         ":AMDGPUPassIncGen",
         ":AMDGPUUtils",
+        ":AffineDialect",
         ":ArithDialect",
+        ":ArithUtils",
         ":ControlFlowDialect",
         ":FuncDialect",
         ":GPUDialect",
         ":IR",
+        ":LLVMSupportHeaders",
         ":MemRefDialect",
+        ":MemRefUtils",
         ":Pass",
+        ":SCFDialect",
         ":SideEffectInterfaces",
         ":Support",
         ":TransformUtils",
         ":VectorDialect",
+        ":VectorTransforms",
+        "//llvm:Support",
     ],
 )
 
@@ -7200,7 +7208,6 @@ cc_library(
         "include/mlir/Transforms/GreedyPatternRewriteDriver.h",
         "include/mlir/Transforms/Inliner.h",
         "include/mlir/Transforms/LoopInvariantCodeMotionUtils.h",
-        "include/mlir/Transforms/OneToNTypeConversion.h",
         "include/mlir/Transforms/RegionUtils.h",
         "include/mlir/Transforms/WalkPatternRewriteDriver.h",
     ],
@@ -8944,7 +8951,6 @@ cc_binary(
         "//mlir/test:TestMemRef",
         "//mlir/test:TestMesh",
         "//mlir/test:TestNVGPU",
-        "//mlir/test:TestOneToNTypeConversion",
         "//mlir/test:TestPDLL",
         "//mlir/test:TestPass",
         "//mlir/test:TestReducer",
@@ -12520,6 +12526,28 @@ gentbl_cc_library(
 )
 
 td_library(
+    name = "BufferizationTypeInterfacesTdFiles",
+    srcs = [
+        "include/mlir/Dialect/Bufferization/IR/BufferizationTypeInterfaces.td",
+    ],
+    includes = ["include"],
+    deps = [
+        ":OpBaseTdFiles",
+    ],
+)
+
+gentbl_cc_library(
+    name = "BufferizationTypeInterfacesIncGen",
+    tbl_outs = {
+        "include/mlir/Dialect/Bufferization/IR/BufferizationTypeInterfaces.h.inc": ["-gen-type-interface-decls"],
+        "include/mlir/Dialect/Bufferization/IR/BufferizationTypeInterfaces.cpp.inc": ["-gen-type-interface-defs"],
+    },
+    tblgen = ":mlir-tblgen",
+    td_file = "include/mlir/Dialect/Bufferization/IR/BufferizationTypeInterfaces.td",
+    deps = [":BufferizationTypeInterfacesTdFiles"],
+)
+
+td_library(
     name = "BufferizationTransformOpsTdFiles",
     srcs = [
         "include/mlir/Dialect/Bufferization/TransformOps/BufferizationTransformOps.td",
@@ -12592,6 +12620,7 @@ cc_library(
         "include/mlir/Dialect/Bufferization/IR/BufferDeallocationOpInterface.h",
         "include/mlir/Dialect/Bufferization/IR/BufferViewFlowOpInterface.h",
         "include/mlir/Dialect/Bufferization/IR/BufferizableOpInterface.h",
+        "include/mlir/Dialect/Bufferization/IR/BufferizationTypeInterfaces.h",
     ],
     includes = ["include"],
     deps = [
@@ -12599,6 +12628,7 @@ cc_library(
         ":BufferViewFlowOpInterfaceIncGen",
         ":BufferizableOpInterfaceIncGen",
         ":BufferizationEnumsIncGen",
+        ":BufferizationTypeInterfacesIncGen",
         ":FunctionInterfaces",
         ":IR",
         ":Support",
