@@ -247,7 +247,7 @@ public:
     Inst.clear();
     Inst.addOperand(MCOperand::createExpr(RISCVMCExpr::create(
         MCSymbolRefExpr::create(Target, MCSymbolRefExpr::VK_None, *Ctx),
-        RISCVMCExpr::VK_CALL, *Ctx)));
+        ELF::R_RISCV_CALL_PLT, *Ctx)));
   }
 
   void createCall(MCInst &Inst, const MCSymbol *Target,
@@ -435,19 +435,19 @@ public:
     case ELF::R_RISCV_TLS_GD_HI20:
       // The GOT is reused so no need to create GOT relocations
     case ELF::R_RISCV_PCREL_HI20:
-      return RISCVMCExpr::create(Expr, RISCVMCExpr::VK_PCREL_HI, Ctx);
+      return RISCVMCExpr::create(Expr, ELF::R_RISCV_PCREL_HI20, Ctx);
     case ELF::R_RISCV_PCREL_LO12_I:
     case ELF::R_RISCV_PCREL_LO12_S:
       return RISCVMCExpr::create(Expr, RISCVMCExpr::VK_PCREL_LO, Ctx);
     case ELF::R_RISCV_HI20:
-      return RISCVMCExpr::create(Expr, RISCVMCExpr::VK_HI, Ctx);
+      return RISCVMCExpr::create(Expr, ELF::R_RISCV_HI20, Ctx);
     case ELF::R_RISCV_LO12_I:
     case ELF::R_RISCV_LO12_S:
       return RISCVMCExpr::create(Expr, RISCVMCExpr::VK_LO, Ctx);
     case ELF::R_RISCV_CALL:
-      return RISCVMCExpr::create(Expr, RISCVMCExpr::VK_CALL, Ctx);
+      return RISCVMCExpr::create(Expr, ELF::R_RISCV_CALL_PLT, Ctx);
     case ELF::R_RISCV_CALL_PLT:
-      return RISCVMCExpr::create(Expr, RISCVMCExpr::VK_CALL_PLT, Ctx);
+      return RISCVMCExpr::create(Expr, ELF::R_RISCV_CALL_PLT, Ctx);
     }
   }
 
@@ -472,8 +472,7 @@ public:
     switch (cast<RISCVMCExpr>(ImmExpr)->getSpecifier()) {
     default:
       return false;
-    case RISCVMCExpr::VK_CALL:
-    case RISCVMCExpr::VK_CALL_PLT:
+    case ELF::R_RISCV_CALL_PLT:
       return true;
     }
   }
@@ -555,9 +554,9 @@ public:
                .addReg(RegCnt);
   }
 
-  InstructionListType createCmpJE(MCPhysReg RegNo, MCPhysReg RegTmp,
-                                  const MCSymbol *Target,
-                                  MCContext *Ctx) const {
+  InstructionListType createRegCmpJE(MCPhysReg RegNo, MCPhysReg RegTmp,
+                                     const MCSymbol *Target,
+                                     MCContext *Ctx) const {
     InstructionListType Insts;
     Insts.emplace_back(
         MCInstBuilder(RISCV::SUB).addReg(RegTmp).addReg(RegNo).addReg(RegNo));
@@ -718,7 +717,7 @@ public:
     Insts.emplace_back();
     loadReg(Insts.back(), RISCV::X10, RISCV::X10, 0);
     InstructionListType cmpJmp =
-        createCmpJE(RISCV::X10, RISCV::X11, IndCallHandler, Ctx);
+        createRegCmpJE(RISCV::X10, RISCV::X11, IndCallHandler, Ctx);
     Insts.insert(Insts.end(), cmpJmp.begin(), cmpJmp.end());
     Insts.emplace_back();
     createStackPointerIncrement(Insts.back(), 16);
@@ -777,14 +776,13 @@ public:
     return createGetter(Ctx, "__bolt_instr_num_funcs");
   }
 
-  void convertIndirectCallToLoad(MCInst &Inst, MCPhysReg Reg,
-                                 MCPhysReg ZeroReg) const {
+  void convertIndirectCallToLoad(MCInst &Inst, MCPhysReg Reg) override {
     bool IsTailCall = isTailCall(Inst);
     if (IsTailCall)
       removeAnnotation(Inst, MCPlus::MCAnnotation::kTailCall);
     Inst.setOpcode(RISCV::ADD);
     Inst.insert(Inst.begin(), MCOperand::createReg(Reg));
-    Inst.insert(Inst.begin() + 1, MCOperand::createReg(ZeroReg));
+    Inst.insert(Inst.begin() + 1, MCOperand::createReg(RISCV::X0));
     return;
   }
 
@@ -845,7 +843,7 @@ public:
     InstructionListType Insts;
     spillRegs(Insts, {RISCV::X10, RISCV::X11});
     Insts.emplace_back(CallInst);
-    convertIndirectCallToLoad(Insts.back(), RISCV::X10, RISCV::X0);
+    convertIndirectCallToLoad(Insts.back(), RISCV::X10);
     InstructionListType LoadImm = createLoadImmediate(RISCV::X11, CallSiteID);
     Insts.insert(Insts.end(), LoadImm.begin(), LoadImm.end());
     spillRegs(Insts, {RISCV::X10, RISCV::X11});
