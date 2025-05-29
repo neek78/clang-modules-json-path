@@ -226,6 +226,8 @@ configure_file(
   @ONLY
 )
 
+message(STATUS "LIBCXX_MODULE_RELATIVE_PATH ${LIBCXX_MODULE_RELATIVE_PATH}")
+
 # Dummy library to make modules an installation component.
 add_library(cxx-modules INTERFACE)
 add_dependencies(cxx-modules generate-cxx-modules)
