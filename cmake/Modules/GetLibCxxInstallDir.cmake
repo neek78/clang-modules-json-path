@@ -17,12 +17,12 @@ function(get_libcxx_install_dir out_var)
   endif()
 
   set(${out_var} ${ret_dir} PARENT_SCOPE)
-  message(STATUS "RET ${out_var}  - ${${out_var}} - ${ret_dir}")
+  message(STATUS "get_libcxx_install_dir() RET ${out_var}  - ${ret_dir}")
 endfunction()
 
 function(get_libcxx_modules_manifest_install_dir out)
   get_libcxx_install_dir(ret)
-  message(STATUS "yyyyy ${ret}")
+  message(STATUS "get_libcxx_modules_manifest_install_dir() - ${ret}")
   set(${out} ${ret} PARENT_SCOPE)
 endfunction()
 
