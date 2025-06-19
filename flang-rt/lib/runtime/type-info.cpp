@@ -279,6 +279,10 @@ FILE *Component::Dump(FILE *f) const {
   }
   std::fprintf(f, " category %d  kind %d  rank %d  offset 0x%zx\n", category_,
       kind_, rank_, static_cast<std::size_t>(offset_));
+  const auto &dtDesc{derivedType_.descriptor()};
+  if (dtDesc.raw().base_addr) {
+    std::fprintf(f, " derivedType_ %p\n", dtDesc.raw().base_addr);
+  }
   if (initialization_) {
     std::fprintf(f, " initialization @ %p:\n",
         reinterpret_cast<const void *>(initialization_));
@@ -325,7 +329,7 @@ FILE *SpecialBinding::Dump(FILE *f) const {
     break;
   }
   std::fprintf(f, "    isArgDescriptorSet: 0x%x\n", isArgDescriptorSet_);
-  std::fprintf(f, "    isTypeBound: 0x%x\n", isTypeBound_);
+  std::fprintf(f, "    isTypeBound: %d\n", isTypeBound_);
   std::fprintf(f, "    isArgContiguousSet: 0x%x\n", isArgContiguousSet_);
   std::fprintf(f, "    proc: %p\n", reinterpret_cast<void *>(proc_));
   return f;

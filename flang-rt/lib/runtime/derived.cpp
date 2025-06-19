@@ -42,12 +42,11 @@ RT_API_ATTRS int InitializeTicket::Begin(WorkQueue &) {
   // Initialize procedure pointer components in each element
   const Descriptor &procPtrDesc{derived_.procPtr()};
   if (std::size_t numProcPtrs{procPtrDesc.Elements()}) {
-    bool noDataComponents{IsComplete()};
     for (std::size_t k{0}; k < numProcPtrs; ++k) {
       const auto &comp{
           *procPtrDesc.ZeroBasedIndexedElement<typeInfo::ProcPtrComponent>(k)};
       // Loop only over elements
-      if (noDataComponents) {
+      if (k > 0) {
         Elementwise::Reset();
       }
       for (; !Elementwise::IsComplete(); Elementwise::Advance()) {
@@ -56,7 +55,7 @@ RT_API_ATTRS int InitializeTicket::Begin(WorkQueue &) {
         pptr = comp.procInitialization;
       }
     }
-    if (noDataComponents) {
+    if (IsComplete()) {
       return StatOk;
     }
     Elementwise::Reset();
@@ -392,7 +391,7 @@ RT_API_ATTRS int FinalizeTicket::Continue(WorkQueue &workQueue) {
 // preceding any deallocation.
 RT_API_ATTRS void Destroy(const Descriptor &descriptor, bool finalize,
     const typeInfo::DerivedType &derived, Terminator *terminator) {
-  if (!derived.noFinalizationNeeded() && descriptor.IsAllocated()) {
+  if (descriptor.IsAllocated() && !derived.noDestructionNeeded()) {
     Terminator stubTerminator{"Destroy() in Fortran runtime", 0};
     WorkQueue workQueue{terminator ? *terminator : stubTerminator};
     if (workQueue.BeginDestroy(descriptor, derived, finalize) == StatContinue) {
