@@ -1490,6 +1490,7 @@ static StringRef segmentTypeToString(unsigned Arch, unsigned Type) {
     LLVM_READOBJ_ENUM_CASE(ELF, PT_GNU_STACK);
     LLVM_READOBJ_ENUM_CASE(ELF, PT_GNU_RELRO);
     LLVM_READOBJ_ENUM_CASE(ELF, PT_GNU_PROPERTY);
+    LLVM_READOBJ_ENUM_CASE(ELF, PT_GNU_SFRAME);
 
     LLVM_READOBJ_ENUM_CASE(ELF, PT_OPENBSD_MUTABLE);
     LLVM_READOBJ_ENUM_CASE(ELF, PT_OPENBSD_RANDOMIZE);
@@ -7879,6 +7880,8 @@ void LLVMELFDumper<ELFT>::printBBAddrMaps(bool PrettyPGOAnalysis) {
             DictScope BBED(W);
             W.printNumber("ID", BBE.ID);
             W.printHex("Offset", BBE.Offset);
+            if (!BBE.CallsiteOffsets.empty())
+              W.printList("Callsite Offsets", BBE.CallsiteOffsets);
             W.printHex("Size", BBE.Size);
             W.printBoolean("HasReturn", BBE.hasReturn());
             W.printBoolean("HasTailCall", BBE.hasTailCall());

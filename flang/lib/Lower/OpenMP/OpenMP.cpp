@@ -14,16 +14,15 @@
 
 #include "Atomic.h"
 #include "ClauseProcessor.h"
-#include "Clauses.h"
 #include "DataSharingProcessor.h"
 #include "Decomposer.h"
-#include "ReductionProcessor.h"
 #include "Utils.h"
 #include "flang/Common/idioms.h"
 #include "flang/Lower/Bridge.h"
 #include "flang/Lower/ConvertExpr.h"
 #include "flang/Lower/ConvertVariable.h"
 #include "flang/Lower/DirectivesCommon.h"
+#include "flang/Lower/OpenMP/Clauses.h"
 #include "flang/Lower/StatementContext.h"
 #include "flang/Lower/SymbolMap.h"
 #include "flang/Optimizer/Builder/BoxValue.h"
@@ -39,6 +38,7 @@
 #include "flang/Support/OpenMP-utils.h"
 #include "mlir/Dialect/ControlFlow/IR/ControlFlowOps.h"
 #include "mlir/Dialect/OpenMP/OpenMPDialect.h"
+#include "mlir/Support/StateStack.h"
 #include "mlir/Transforms/RegionUtils.h"
 #include "llvm/ADT/STLExtras.h"
 #include "llvm/Frontend/OpenMP/OMPConstants.h"
@@ -198,9 +198,41 @@ private:
 /// the handling of the outer region by keeping a stack of information
 /// structures, but it will probably still require some further work to support
 /// reverse offloading.
-static llvm::SmallVector<HostEvalInfo, 0> hostEvalInfo;
-static llvm::SmallVector<const parser::OpenMPSectionsConstruct *, 0>
-    sectionsStack;
+class HostEvalInfoStackFrame
+    : public mlir::StateStackFrameBase<HostEvalInfoStackFrame> {
+public:
+  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(HostEvalInfoStackFrame)
+
+  HostEvalInfo info;
+};
+
+static HostEvalInfo *
+getHostEvalInfoStackTop(lower::AbstractConverter &converter) {
+  HostEvalInfoStackFrame *frame =
+      converter.getStateStack().getStackTop<HostEvalInfoStackFrame>();
+  return frame ? &frame->info : nullptr;
+}
+
+/// Stack frame for storing the OpenMPSectionsConstruct currently being
+/// processed so that it can be referred to when lowering the construct.
+class SectionsConstructStackFrame
+    : public mlir::StateStackFrameBase<SectionsConstructStackFrame> {
+public:
+  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(SectionsConstructStackFrame)
+
+  explicit SectionsConstructStackFrame(
+      const parser::OpenMPSectionsConstruct &sectionsConstruct)
+      : sectionsConstruct{sectionsConstruct} {}
+
+  const parser::OpenMPSectionsConstruct &sectionsConstruct;
+};
+
+static const parser::OpenMPSectionsConstruct *
+getSectionsConstructStackTop(lower::AbstractConverter &converter) {
+  SectionsConstructStackFrame *frame =
+      converter.getStateStack().getStackTop<SectionsConstructStackFrame>();
+  return frame ? &frame->sectionsConstruct : nullptr;
+}
 
 /// Bind symbols to their corresponding entry block arguments.
 ///
@@ -340,90 +372,6 @@ extractMappedBaseValues(llvm::ArrayRef<mlir::Value> vars,
   });
 }
 
-/// Get the directive enumeration value corresponding to the given OpenMP
-/// construct PFT node.
-llvm::omp::Directive
-extractOmpDirective(const parser::OpenMPConstruct &ompConstruct) {
-  return common::visit(
-      common::visitors{
-          [](const parser::OpenMPAllocatorsConstruct &c) {
-            return llvm::omp::OMPD_allocators;
-          },
-          [](const parser::OpenMPAssumeConstruct &c) {
-            return llvm::omp::OMPD_assume;
-          },
-          [](const parser::OpenMPAtomicConstruct &c) {
-            return llvm::omp::OMPD_atomic;
-          },
-          [](const parser::OpenMPBlockConstruct &c) {
-            return std::get<parser::OmpBlockDirective>(
-                       std::get<parser::OmpBeginBlockDirective>(c.t).t)
-                .v;
-          },
-          [](const parser::OpenMPCriticalConstruct &c) {
-            return llvm::omp::OMPD_critical;
-          },
-          [](const parser::OpenMPDeclarativeAllocate &c) {
-            return llvm::omp::OMPD_allocate;
-          },
-          [](const parser::OpenMPDispatchConstruct &c) {
-            return llvm::omp::OMPD_dispatch;
-          },
-          [](const parser::OpenMPExecutableAllocate &c) {
-            return llvm::omp::OMPD_allocate;
-          },
-          [](const parser::OpenMPLoopConstruct &c) {
-            return std::get<parser::OmpLoopDirective>(
-                       std::get<parser::OmpBeginLoopDirective>(c.t).t)
-                .v;
-          },
-          [](const parser::OpenMPSectionConstruct &c) {
-            return llvm::omp::OMPD_section;
-          },
-          [](const parser::OpenMPSectionsConstruct &c) {
-            return std::get<parser::OmpSectionsDirective>(
-                       std::get<parser::OmpBeginSectionsDirective>(c.t).t)
-                .v;
-          },
-          [](const parser::OpenMPStandaloneConstruct &c) {
-            return common::visit(
-                common::visitors{
-                    [](const parser::OpenMPSimpleStandaloneConstruct &c) {
-                      return c.v.DirId();
-                    },
-                    [](const parser::OpenMPFlushConstruct &c) {
-                      return llvm::omp::OMPD_flush;
-                    },
-                    [](const parser::OpenMPCancelConstruct &c) {
-                      return llvm::omp::OMPD_cancel;
-                    },
-                    [](const parser::OpenMPCancellationPointConstruct &c) {
-                      return llvm::omp::OMPD_cancellation_point;
-                    },
-                    [](const parser::OmpMetadirectiveDirective &c) {
-                      return llvm::omp::OMPD_metadirective;
-                    },
-                    [](const parser::OpenMPDepobjConstruct &c) {
-                      return llvm::omp::OMPD_depobj;
-                    },
-                    [](const parser::OpenMPInteropConstruct &c) {
-                      return llvm::omp::OMPD_interop;
-                    }},
-                c.u);
-          },
-          [](const parser::OpenMPUtilityConstruct &c) {
-            return common::visit(
-                common::visitors{[](const parser::OmpErrorDirective &c) {
-                                   return llvm::omp::OMPD_error;
-                                 },
-                                 [](const parser::OmpNothingDirective &c) {
-                                   return llvm::omp::OMPD_nothing;
-                                 }},
-                c.u);
-          }},
-      ompConstruct.u);
-}
-
 /// Populate the global \see hostEvalInfo after processing clauses for the given
 /// \p eval OpenMP target construct, or nested constructs, if these must be
 /// evaluated outside of the target region per the spec.
@@ -535,31 +483,32 @@ static void processHostEvalClauses(lower::AbstractConverter &converter,
     if (!ompEval)
       return;
 
-    HostEvalInfo &hostInfo = hostEvalInfo.back();
+    HostEvalInfo *hostInfo = getHostEvalInfoStackTop(converter);
+    assert(hostInfo && "expected HOST_EVAL info structure");
 
     switch (extractOmpDirective(*ompEval)) {
     case OMPD_teams_distribute_parallel_do:
     case OMPD_teams_distribute_parallel_do_simd:
-      cp.processThreadLimit(stmtCtx, hostInfo.ops);
+      cp.processThreadLimit(stmtCtx, hostInfo->ops);
       [[fallthrough]];
     case OMPD_target_teams_distribute_parallel_do:
     case OMPD_target_teams_distribute_parallel_do_simd:
-      cp.processNumTeams(stmtCtx, hostInfo.ops);
+      cp.processNumTeams(stmtCtx, hostInfo->ops);
       [[fallthrough]];
     case OMPD_distribute_parallel_do:
     case OMPD_distribute_parallel_do_simd:
-      cp.processNumThreads(stmtCtx, hostInfo.ops);
+      cp.processNumThreads(stmtCtx, hostInfo->ops);
       [[fallthrough]];
     case OMPD_distribute:
     case OMPD_distribute_simd:
-      cp.processCollapse(loc, eval, hostInfo.ops, hostInfo.iv);
+      cp.processCollapse(loc, eval, hostInfo->ops, hostInfo->iv);
       break;
 
     case OMPD_teams:
-      cp.processThreadLimit(stmtCtx, hostInfo.ops);
+      cp.processThreadLimit(stmtCtx, hostInfo->ops);
       [[fallthrough]];
     case OMPD_target_teams:
-      cp.processNumTeams(stmtCtx, hostInfo.ops);
+      cp.processNumTeams(stmtCtx, hostInfo->ops);
       processSingleNestedIf([](Directive nestedDir) {
         return topDistributeSet.test(nestedDir) || topLoopSet.test(nestedDir);
       });
@@ -567,22 +516,22 @@ static void processHostEvalClauses(lower::AbstractConverter &converter,
 
     case OMPD_teams_distribute:
     case OMPD_teams_distribute_simd:
-      cp.processThreadLimit(stmtCtx, hostInfo.ops);
+      cp.processThreadLimit(stmtCtx, hostInfo->ops);
       [[fallthrough]];
     case OMPD_target_teams_distribute:
     case OMPD_target_teams_distribute_simd:
-      cp.processCollapse(loc, eval, hostInfo.ops, hostInfo.iv);
-      cp.processNumTeams(stmtCtx, hostInfo.ops);
+      cp.processCollapse(loc, eval, hostInfo->ops, hostInfo->iv);
+      cp.processNumTeams(stmtCtx, hostInfo->ops);
       break;
 
     case OMPD_teams_loop:
-      cp.processThreadLimit(stmtCtx, hostInfo.ops);
+      cp.processThreadLimit(stmtCtx, hostInfo->ops);
       [[fallthrough]];
     case OMPD_target_teams_loop:
-      cp.processNumTeams(stmtCtx, hostInfo.ops);
+      cp.processNumTeams(stmtCtx, hostInfo->ops);
       [[fallthrough]];
     case OMPD_loop:
-      cp.processCollapse(loc, eval, hostInfo.ops, hostInfo.iv);
+      cp.processCollapse(loc, eval, hostInfo->ops, hostInfo->iv);
       break;
 
     // Standalone 'target' case.
@@ -595,8 +544,6 @@ static void processHostEvalClauses(lower::AbstractConverter &converter,
       break;
     }
   };
-
-  assert(!hostEvalInfo.empty() && "expected HOST_EVAL info structure");
 
   const auto *ompEval = eval.getIf<parser::OpenMPConstruct>();
   assert(ompEval &&
@@ -1456,8 +1403,8 @@ static void genBodyOfTargetOp(
   mlir::Region &region = targetOp.getRegion();
   mlir::Block *entryBlock = genEntryBlock(firOpBuilder, args, region);
   bindEntryBlockArgs(converter, targetOp, args);
-  if (!hostEvalInfo.empty())
-    hostEvalInfo.back().bindOperands(argIface.getHostEvalBlockArgs());
+  if (HostEvalInfo *hostEvalInfo = getHostEvalInfoStackTop(converter))
+    hostEvalInfo->bindOperands(argIface.getHostEvalBlockArgs());
 
   // Check if cloning the bounds introduced any dependency on the outer region.
   // If so, then either clone them as well if they are MemoryEffectFree, or else
@@ -1696,7 +1643,8 @@ genLoopNestClauses(lower::AbstractConverter &converter,
                    llvm::SmallVectorImpl<const semantics::Symbol *> &iv) {
   ClauseProcessor cp(converter, semaCtx, clauses);
 
-  if (hostEvalInfo.empty() || !hostEvalInfo.back().apply(clauseOps, iv))
+  HostEvalInfo *hostEvalInfo = getHostEvalInfoStackTop(converter);
+  if (!hostEvalInfo || !hostEvalInfo->apply(clauseOps, iv))
     cp.processCollapse(loc, eval, clauseOps, iv);
 
   clauseOps.loopInclusive = converter.getFirOpBuilder().getUnitAttr();
@@ -1741,7 +1689,8 @@ static void genParallelClauses(
   cp.processAllocate(clauseOps);
   cp.processIf(llvm::omp::Directive::OMPD_parallel, clauseOps);
 
-  if (hostEvalInfo.empty() || !hostEvalInfo.back().apply(clauseOps))
+  HostEvalInfo *hostEvalInfo = getHostEvalInfoStackTop(converter);
+  if (!hostEvalInfo || !hostEvalInfo->apply(clauseOps))
     cp.processNumThreads(stmtCtx, clauseOps);
 
   cp.processProcBind(clauseOps);
@@ -1812,10 +1761,10 @@ static void genTargetClauses(
   cp.processDepend(symTable, stmtCtx, clauseOps);
   cp.processDevice(stmtCtx, clauseOps);
   cp.processHasDeviceAddr(stmtCtx, clauseOps, hasDeviceAddrSyms);
-  if (!hostEvalInfo.empty()) {
+  if (HostEvalInfo *hostEvalInfo = getHostEvalInfoStackTop(converter)) {
     // Only process host_eval if compiling for the host device.
     processHostEvalClauses(converter, semaCtx, stmtCtx, eval, loc);
-    hostEvalInfo.back().collectValues(clauseOps.hostEvalVars);
+    hostEvalInfo->collectValues(clauseOps.hostEvalVars);
   }
   cp.processIf(llvm::omp::Directive::OMPD_target, clauseOps);
   cp.processIsDevicePtr(clauseOps, isDevicePtrSyms);
@@ -1952,7 +1901,8 @@ static void genTeamsClauses(
   cp.processAllocate(clauseOps);
   cp.processIf(llvm::omp::Directive::OMPD_teams, clauseOps);
 
-  if (hostEvalInfo.empty() || !hostEvalInfo.back().apply(clauseOps)) {
+  HostEvalInfo *hostEvalInfo = getHostEvalInfoStackTop(converter);
+  if (!hostEvalInfo || !hostEvalInfo->apply(clauseOps)) {
     cp.processNumTeams(stmtCtx, clauseOps);
     cp.processThreadLimit(stmtCtx, clauseOps);
   }
@@ -2204,19 +2154,18 @@ genScanOp(lower::AbstractConverter &converter, lower::SymMap &symTable,
       converter.getCurrentLocation(), clauseOps);
 }
 
-/// This breaks the normal prototype of the gen*Op functions: adding the
-/// sectionBlocks argument so that the enclosed section constructs can be
-/// lowered here with correct reduction symbol remapping.
 static mlir::omp::SectionsOp
 genSectionsOp(lower::AbstractConverter &converter, lower::SymMap &symTable,
               semantics::SemanticsContext &semaCtx,
               lower::pft::Evaluation &eval, mlir::Location loc,
               const ConstructQueue &queue,
               ConstructQueue::const_iterator item) {
-  assert(!sectionsStack.empty());
+  const parser::OpenMPSectionsConstruct *sectionsConstruct =
+      getSectionsConstructStackTop(converter);
+  assert(sectionsConstruct && "Missing additional parsing information");
+
   const auto &sectionBlocks =
-      std::get<parser::OmpSectionBlocks>(sectionsStack.back()->t);
-  sectionsStack.pop_back();
+      std::get<parser::OmpSectionBlocks>(sectionsConstruct->t);
   mlir::omp::SectionsOperands clauseOps;
   llvm::SmallVector<const semantics::Symbol *> reductionSyms;
   genSectionsClauses(converter, semaCtx, item->clauses, loc, clauseOps,
@@ -2370,7 +2319,7 @@ genTargetOp(lower::AbstractConverter &converter, lower::SymMap &symTable,
 
   // Introduce a new host_eval information structure for this target region.
   if (!isTargetDevice)
-    hostEvalInfo.emplace_back();
+    converter.getStateStack().stackPush<HostEvalInfoStackFrame>();
 
   mlir::omp::TargetOperands clauseOps;
   DefaultMapsTy defaultMaps;
@@ -2393,6 +2342,10 @@ genTargetOp(lower::AbstractConverter &converter, lower::SymMap &symTable,
   // clauses).
   auto captureImplicitMap = [&](const semantics::Symbol &sym) {
     if (dsp.getAllSymbolsToPrivatize().contains(&sym))
+      return;
+
+    // Skip parameters/constants as they do not need to be mapped.
+    if (semantics::IsNamedConstant(sym))
       return;
 
     // These symbols are mapped individually in processHasDeviceAddr.
@@ -2497,7 +2450,7 @@ genTargetOp(lower::AbstractConverter &converter, lower::SymMap &symTable,
 
   // Remove the host_eval information structure created for this target region.
   if (!isTargetDevice)
-    hostEvalInfo.pop_back();
+    converter.getStateStack().stackPop();
   return targetOp;
 }
 
@@ -3731,6 +3684,16 @@ static void genOMP(lower::AbstractConverter &converter, lower::SymMap &symTable,
   mlir::Location currentLocation =
       converter.genLocation(beginLoopDirective.source);
 
+  auto &optLoopCons =
+      std::get<std::optional<parser::NestedConstruct>>(loopConstruct.t);
+  if (optLoopCons.has_value()) {
+    if (auto *ompNestedLoopCons{
+            std::get_if<common::Indirection<parser::OpenMPLoopConstruct>>(
+                &*optLoopCons)}) {
+      genOMP(converter, symTable, semaCtx, eval, ompNestedLoopCons->value());
+    }
+  }
+
   llvm::omp::Directive directive =
       std::get<parser::OmpLoopDirective>(beginLoopDirective.t).v;
   const parser::CharBlock &source =
@@ -3771,7 +3734,8 @@ static void genOMP(lower::AbstractConverter &converter, lower::SymMap &symTable,
       buildConstructQueue(converter.getFirOpBuilder().getModule(), semaCtx,
                           eval, source, directive, clauses)};
 
-  sectionsStack.push_back(&sectionsConstruct);
+  mlir::SaveStateStack<SectionsConstructStackFrame> saveStateStack{
+      converter.getStateStack(), sectionsConstruct};
   genOMPDispatch(converter, symTable, semaCtx, eval, currentLocation, queue,
                  queue.begin());
 }

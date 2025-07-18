@@ -264,6 +264,8 @@ public:
   static Status SaveCore(const lldb::ProcessSP &process_sp,
                          lldb_private::SaveCoreOptions &core_options);
 
+  static std::vector<llvm::StringRef> GetSaveCorePluginNames();
+
   // ObjectContainer
   static bool RegisterPlugin(
       llvm::StringRef name, llvm::StringRef description,
@@ -785,6 +787,9 @@ public:
 
   static std::vector<RegisteredPluginInfo> GetUnwindAssemblyPluginInfo();
   static bool SetUnwindAssemblyPluginEnabled(llvm::StringRef name, bool enable);
+
+  static void AutoCompletePluginName(llvm::StringRef partial_name,
+                                     CompletionRequest &request);
 };
 
 } // namespace lldb_private
