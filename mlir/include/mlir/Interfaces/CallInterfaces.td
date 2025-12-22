@@ -27,7 +27,7 @@ def ArgAndResultAttrsOpInterface : OpInterface<"ArgAndResultAttrsOpInterface"> {
   }];
   let cppNamespace = "::mlir";
 
-  let methods = [
+  list<InterfaceMethod> methods = [
     InterfaceMethod<[{
         Get the array of argument attribute dictionaries. The method should
         return an array attribute containing only dictionary attributes equal in
