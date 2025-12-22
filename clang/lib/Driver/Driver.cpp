@@ -6568,7 +6568,7 @@ std::string Driver::GetStdModuleManifestPath(const Compilation &C,
       SmallString<128> path(lib.begin(), lib.end());
       llvm::sys::path::remove_filename(path);
       llvm::sys::path::append(path, filename);
-      llvm::outs() << "Path is " << path << "\n";
+      llvm::outs() << "\n\n======Path is " << path << "\n";
       if (TC.getVFS().exists(path))
         return static_cast<std::string>(path);
 
