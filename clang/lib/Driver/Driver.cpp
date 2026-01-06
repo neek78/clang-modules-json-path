@@ -6562,14 +6562,13 @@ std::string Driver::GetFilePath(StringRef Name, const ToolChain &TC) const {
   if (llvm::sys::fs::exists(Twine(D)))
     return std::string(D);
 
-#ifdef LIBCXX_INSTALL_LIBRARY_DIR
+#ifdef LIBCXX_INSTALL_MODULES_MANIFEST_DIR
   // this is required to support -print-file-name=libc++.modules.json when
-  // LIBCXX_INSTALL_LIBRARY_DIR is explicitly set
+  // LIBCXX_INSTALL_MODULES_MANIFEST_DIR is explicitly set
   // this is possibly deprecated in lieu of -print-library-module-manifest-path,
   // in which case it can be removed
-  SmallString<128> L(LIBCXX_INSTALL_LIBRARY_DIR);
+  SmallString<128> L(LIBCXX_INSTALL_MODULES_MANIFEST_DIR);
   llvm::sys::path::append(L, Name);
-  // llvm::errs() << " L is " << L << "\n";
   if (llvm::sys::fs::exists(Twine(L)))
     return std::string(L);
 #endif
@@ -6676,17 +6675,15 @@ std::string Driver::GetStdModuleManifestPath(const Compilation &C,
       SmallString<128> path(lib.begin(), lib.end());
       llvm::sys::path::remove_filename(path);
       llvm::sys::path::append(path, filename);
-      llvm::outs() << "\n\n======Path is " << path << "\n";
       if (TC.getVFS().exists(path))
         return static_cast<std::string>(path);
 
       return {};
     };
 
-#ifdef LIBCXX_INSTALL_LIBRARY_DIR
-    SmallString<128> configuredPath(LIBCXX_INSTALL_LIBRARY_DIR);
+#ifdef LIBCXX_INSTALL_MODULES_MANIFEST_DIR
+    SmallString<128> configuredPath(LIBCXX_INSTALL_MODULES_MANIFEST_DIR);
     llvm::sys::path::append(configuredPath, filename);
-    llvm::errs() << "path2 is " << configuredPath << "\n";
     if (TC.getVFS().exists(configuredPath))
       return static_cast<std::string>(configuredPath);
 #endif
