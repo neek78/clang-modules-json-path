@@ -907,12 +907,11 @@ endif()
 
 set(CLANG_INSTALL_LIBDIR_BASENAME "lib${CLANG_LIBDIR_SUFFIX}")
 
-get_libcxx_install_dirs(LIBCXX_INSTALL_LIBRARY_DIR LIBCXX_INSTALL_MODULES_MANIFEST_DIR)
+get_libcxx_install_dirs(_dummy LIBCXX_INSTALL_MODULES_MANIFEST_DIR)
 
-message(STATUS "Clang LIBCXX_INSTALL_LIBRARY_DIR: ${LIBCXX_INSTALL_LIBRARY_DIR}")
+# message(STATUS "Clang LIBCXX_INSTALL_LIBRARY_DIR: ${_dummy}")
 message(STATUS "Clang LIBCXX_INSTALL_MODULES_MANIFEST_DIR: ${LIBCXX_INSTALL_MODULES_MANIFEST_DIR}")
-
-#message(FATAL_ERROR i"clang die")
+unset(_dummy)
 
 configure_file(
   ${CLANG_SOURCE_DIR}/include/clang/Config/config.h.cmake

@@ -1,9 +1,6 @@
 
 
 function(get_libcxx_install_dirs lib_dir_var manifest_dir_var)
-# message(FATAL_ERROR " XXXXXXXXXXXXXXXXXXXX die XXXXXXXXXXXXXXXXXXX")
-
-#  message(STATUS "UUU ${LLVM_LIBDIR_SUFFIX} ${LIBDIR_SUFFIX}")
   set(LIBDIR_SUFFIX "${LLVM_LIBDIR_SUFFIX}")
 
   if(NOT DEFINED ${lib_dir_var} OR "${${lib_dir_var}}" STREQUAL "")
@@ -31,6 +28,6 @@ function(get_libcxx_install_dirs lib_dir_var manifest_dir_var)
     set(${manifest_dir_var} ${ret_dir} PARENT_SCOPE)
   endif()
 
-  message(STATUS "get_libcxx_install_dirs() RET ${${lib_dir_var}} ${${manifest_dir_var}}")
+  # message(STATUS "get_libcxx_install_dirs() RET ${${lib_dir_var}} ${${manifest_dir_var}}")
 endfunction()
 
