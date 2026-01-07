@@ -6691,6 +6691,8 @@ std::string Driver::GetStdModuleManifestPath(const Compilation &C,
     };
 
 #ifdef LIBCXX_INSTALL_MODULES_MANIFEST_DIR
+    // IF there's an explicitly configured modules manifest dir, look
+    // directly for the manifest there, rather than searching for libc++.*
     SmallString<128> configuredPath(LIBCXX_INSTALL_MODULES_MANIFEST_DIR);
     llvm::sys::path::append(configuredPath, filename);
     if (TC.getVFS().exists(configuredPath))
