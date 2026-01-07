@@ -449,23 +449,15 @@ else()
       "Path where target-specific libc++ headers should be installed.")
 endif()
 
-get_libcxx_install_dir(_dest)
-#message(FATAL_ERROR "${_dest}")
-set(LIBCXX_INSTALL_LIBRARY_DIR ${_dest} CACHE STRING
+get_libcxx_install_dirs(LIBCXX_INSTALL_LIBRARY_DIR LIBCXX_INSTALL_MODULES_MANIFEST_DIR)
+set(LIBCXX_INSTALL_LIBRARY_DIR "${LIBCXX_INSTALL_LIBRARY_DIR}" CACHE STRING
   "Path where built libc++ libraries should be installed.")
-unset (_dest)
 
-
-get_libcxx_modules_manifest_install_dir(_dest)
-#message(FATAL_ERROR "${_dest}")
-set(LIBCXX_INSTALL_MODULES_MANIFEST_DIR ${_dest} CACHE STRING
+set(LIBCXX_INSTALL_MODULES_MANIFEST_DIR "${LIBCXX_INSTALL_MODULES_MANIFEST_DIR}" CACHE STRING
   "Path where c++.modules.json should be installed.")
-unset (_dest)
 
 MESSAGE(STATUS "libcxx2 LIBCXX_INSTALL_LIBRARY_DIR ${LIBCXX_INSTALL_LIBRARY_DIR}")
 MESSAGE(STATUS "libcxx2 LIBCXX_INSTALL_MODULES_MANIFEST_DIR ${LIBCXX_INSTALL_MODULES_MANIFEST_DIR}")
-
-#set(LIBCXX_INSTALL_MODULES_MANIFEST_DIR ${LIBCXX_LIBRARY_DIR})
 
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${LIBCXX_LIBRARY_DIR})
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${LIBCXX_LIBRARY_DIR})

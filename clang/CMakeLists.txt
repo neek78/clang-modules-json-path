@@ -912,7 +912,7 @@ get_libcxx_install_dirs(LIBCXX_INSTALL_LIBRARY_DIR LIBCXX_INSTALL_MODULES_MANIFE
 message(STATUS "Clang LIBCXX_INSTALL_LIBRARY_DIR: ${LIBCXX_INSTALL_LIBRARY_DIR}")
 message(STATUS "Clang LIBCXX_INSTALL_MODULES_MANIFEST_DIR: ${LIBCXX_INSTALL_MODULES_MANIFEST_DIR}")
 
-message(FATAL_ERROR i"clang die")
+#message(FATAL_ERROR i"clang die")
 
 configure_file(
   ${CLANG_SOURCE_DIR}/include/clang/Config/config.h.cmake
