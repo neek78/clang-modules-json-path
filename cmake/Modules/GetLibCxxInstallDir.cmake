@@ -1,7 +1,10 @@
 
-function(get_libcxx_install_dir out_var)
-  #FIXME: don't overwrite if already set
-  # if(DEFINED CLANG_RESOURCE_DIR AND NOT CLANG_RESOURCE_DIR STREQUAL "")
+# 
+function(_maybe_set val out_var)
+endfunction()
+
+function(get_libcxx_install_dirs libdir_var manifestdir_var)
+# message(FATAL_ERROR " XXXXXXXXXXXXXXXXXXXX die XXXXXXXXXXXXXXXXXXX")
 
   message(STATUS "UUU ${LLVM_LIBDIR_SUFFIX} ${LIBDIR_SUFFIX}")
   set(LIBDIR_SUFFIX "${LLVM_LIBDIR_SUFFIX}")
@@ -16,13 +19,14 @@ function(get_libcxx_install_dir out_var)
     set(ret_dir lib${LIBDIR_SUFFIX})
   endif()
 
-  set(${out_var} ${ret_dir} PARENT_SCOPE)
-  message(STATUS "get_libcxx_install_dir() RET ${out_var}  - ${ret_dir}")
-endfunction()
-
-function(get_libcxx_modules_manifest_install_dir out)
-  get_libcxx_install_dir(ret)
-  message(STATUS "get_libcxx_modules_manifest_install_dir() - ${ret}")
-  set(${out} ${ret} PARENT_SCOPE)
+  if(NOT DEFINED ${manifestdir_var} OR "${${manifestdir_var}}" STREQUAL "")
+    message(STATUS "setting ${manifestdir_var} to same value")
+    set(${manifestdir_var} ${ret_dir} PARENT_SCOPE)
+  else()
+    message(STATUS "${manifestdir_var} explicitly set to ${${manifestdir_var}}")
+  endif()
+  
+  set(${libdir_var} ${ret_dir} PARENT_SCOPE)
+  message(STATUS "get_libcxx_install_dirs() RET ${libdir_var} ${manifestdir_var}")
 endfunction()
 
