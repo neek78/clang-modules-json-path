@@ -215,6 +215,13 @@ General purpose options
   Path where target-specific libc++ headers should be installed. If a relative
   path, relative to ``CMAKE_INSTALL_PREFIX``.
 
+.. option:: LIBCXX_INSTALL_MANIFEST_DIR:PATH
+
+  **Default**: ``${LIBCXX_INSTALL_LIBRARY_DIR}``
+
+  Path where modules.c++.json should be installed. If a relative path,
+  relative to ``CMAKE_INSTALL_PREFIX``.
+
 .. option:: LIBCXX_SHARED_OUTPUT_NAME:STRING
 
   **Default**: ``c++``
