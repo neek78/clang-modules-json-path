@@ -1,4 +1,17 @@
 
+# get libcxx install directories
+#
+# usage:
+# get_libcxx_install_dirs(library_dir_var module_manifest_dir_var)
+#
+# determine the path to install libc++ (usually LIBCXX_INSTALL_INCLUDE_TARGET_DIR)
+# and libc++'s modules.c++.json (usually LIBCXX_MODULES_MANIFEST_INSTALL_DIR)
+#
+# This logic was broken out of libcxx/CMakeLists.txt as both libcxx and clang's
+# driver.cpp need to know at least the latter value.
+#
+# If named variables are already set, thus function will NOT overwrite them,
+# allowing user preference to take precedence.
 
 function(get_libcxx_install_dirs lib_dir_var manifest_dir_var)
   set(LIBDIR_SUFFIX "${LLVM_LIBDIR_SUFFIX}")
