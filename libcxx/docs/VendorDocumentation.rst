@@ -215,7 +215,7 @@ General purpose options
   Path where target-specific libc++ headers should be installed. If a relative
   path, relative to ``CMAKE_INSTALL_PREFIX``.
 
-.. option:: LIBCXX_INSTALL_MANIFEST_DIR:PATH
+.. option:: LIBCXX_INSTALL_MODULES_MANIFEST_DIR:PATH
 
   **Default**: ``${LIBCXX_INSTALL_LIBRARY_DIR}``
 
