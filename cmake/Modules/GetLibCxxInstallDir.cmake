@@ -16,7 +16,7 @@
 function(get_libcxx_install_dirs lib_dir_var manifest_dir_var)
   set(LIBDIR_SUFFIX "${LLVM_LIBDIR_SUFFIX}")
 
-  if(NOT DEFINED ${lib_dir_var} OR "${${lib_dir_var}}" STREQUAL "")
+  if(NOT DEFINED ${lib_dir_var})
     if(LLVM_ENABLE_PER_TARGET_RUNTIME_DIR AND NOT APPLE)
       set(TARGET_SUBDIR ${LLVM_DEFAULT_TARGET_TRIPLE})
       if(LIBDIR_SUBDIR)
