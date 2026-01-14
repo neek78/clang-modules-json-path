@@ -226,8 +226,6 @@ configure_file(
   @ONLY
 )
 
-message(STATUS "LIBCXX_MODULE_RELATIVE_PATH ${LIBCXX_MODULE_RELATIVE_PATH}")
-
 # Dummy library to make modules an installation component.
 add_library(cxx-modules INTERFACE)
 add_dependencies(cxx-modules generate-cxx-modules)
@@ -254,7 +252,7 @@ if (LIBCXX_INSTALL_MODULES)
   # Install the module manifest.
   install(FILES
       "${LIBCXX_LIBRARY_DIR}/libc++.modules.json"
-      DESTINATION "${LIBCXX_INSTALL_MODULES_MANIFEST_DIR}"
+    DESTINATION "${LIBCXX_INSTALL_LIBRARY_DIR}"
     COMPONENT cxx-modules
     PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ
   )
