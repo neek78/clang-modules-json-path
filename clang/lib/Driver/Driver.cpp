@@ -6571,7 +6571,6 @@ std::string Driver::GetFilePath(StringRef Name, const ToolChain &TC) const {
   if (llvm::sys::fs::exists(Twine(D)))
     return std::string(D);
 
-#if 0
 #ifdef LIBCXX_INSTALL_MODULES_MANIFEST_DIR
   // this is required to support -print-file-name=libc++.modules.json when
   // LIBCXX_INSTALL_MODULES_MANIFEST_DIR is explicitly set
@@ -6581,7 +6580,6 @@ std::string Driver::GetFilePath(StringRef Name, const ToolChain &TC) const {
   llvm::sys::path::append(L, Name);
   if (llvm::sys::fs::exists(Twine(L)))
     return std::string(L);
-#endif
 #endif
 
   if (auto P = SearchPaths(TC.getLibraryPaths()))
@@ -6686,31 +6684,19 @@ std::string Driver::GetStdModuleManifestPath(const Compilation &C,
       SmallString<128> path(lib.begin(), lib.end());
       llvm::sys::path::remove_filename(path);
       llvm::sys::path::append(path, filename);
-      llvm::errs() << "trying " << path << "\n";
       if (TC.getVFS().exists(path))
-      {
-          auto cd = *TC.getVFS().getCurrentWorkingDirectory() ;
-          llvm::errs() << "cp " << path << " " << cd << "\n";
           return static_cast<std::string>(path);
-      }
 
       return {};
     };
 
-#if 1
 #ifdef LIBCXX_INSTALL_MODULES_MANIFEST_DIR
     // IF there's an explicitly configured modules manifest dir, look
     // directly for the manifest there, rather than searching for libc++.*
     SmallString<128> configuredPath(LIBCXX_INSTALL_MODULES_MANIFEST_DIR);
-    llvm::errs() << "YEP " << configuredPath << "\n";
     llvm::sys::path::append(configuredPath, filename);
-    llvm::errs() << "YEP2 " << configuredPath << "\n";
-    if (TC.getVFS().exists(configuredPath)) {
-          auto cd = *TC.getVFS().getCurrentWorkingDirectory() ;
-      llvm::errs() << "cp " << configuredPath << " " << cd << "\n";
+    if (TC.getVFS().exists(configuredPath))
       return static_cast<std::string>(configuredPath);
-    }
-#endif
 #endif
 
     if (std::optional<std::string> result = evaluate("libc++.so"); result)
