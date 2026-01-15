@@ -217,7 +217,7 @@ Driver::Driver(StringRef ClangExecutable, StringRef TargetTriple,
   // Compute the path to the resource directory.
   ResourceDir = GetResourcesPath(ClangExecutable);
 
-  // Compute the path to the resource directory.
+  // Compute the path to Libc++'s install directory
   LibCxxDir = GetLibCxxPath(ClangExecutable);
 }
 
