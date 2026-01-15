@@ -6542,11 +6542,13 @@ std::string Driver::GetFilePath(StringRef Name, const ToolChain &TC) const {
       -> std::optional<std::string> {
     // Respect a limited subset of the '-Bprefix' functionality in GCC by
     // attempting to use this prefix when looking for file paths.
+    //llvm::errs() << "SearchingZZZ " << P.size()<< "\n";
     for (const auto &Dir : P) {
       if (Dir.empty())
         continue;
       SmallString<128> P(Dir[0] == '=' ? SysRoot + Dir.substr(1) : Dir);
       llvm::sys::path::append(P, Name);
+      //llvm::errs() << "Searching " << P << "\n";
       if (llvm::sys::fs::exists(Twine(P)))
         return std::string(P);
     }
@@ -6557,11 +6559,13 @@ std::string Driver::GetFilePath(StringRef Name, const ToolChain &TC) const {
     return *P;
 
   SmallString<128> R(ResourceDir);
+  //llvm::errs() << "ResDIr " << R << "\n";
   llvm::sys::path::append(R, Name);
   if (llvm::sys::fs::exists(Twine(R)))
     return std::string(R);
 
   SmallString<128> P(TC.getCompilerRTPath());
+      //llvm::errs() << "P " << P << "\n";
   llvm::sys::path::append(P, Name);
   if (llvm::sys::fs::exists(Twine(P)))
     return std::string(P);
@@ -6571,17 +6575,6 @@ std::string Driver::GetFilePath(StringRef Name, const ToolChain &TC) const {
   if (llvm::sys::fs::exists(Twine(D)))
     return std::string(D);
 
-#ifdef LIBCXX_INSTALL_LIBRARY_DIR
-  // this is required to support -print-file-name=libc++.modules.json when
-  // LIBCXX_INSTALL_LIBRARY_DIR is explicitly set
-  // this is possibly deprecated in lieu of -print-library-module-manifest-path,
-  // in which case it can be removed
-  SmallString<128> L(LIBCXX_INSTALL_LIBRARY_DIR);
-  llvm::sys::path::append(L, Name);
-  if (llvm::sys::fs::exists(Twine(L)))
-    return std::string(L);
-#endif
-
   if (auto P = SearchPaths(TC.getLibraryPaths()))
     return *P;
 
@@ -6590,8 +6583,44 @@ std::string Driver::GetFilePath(StringRef Name, const ToolChain &TC) const {
 
   SmallString<128> R2(ResourceDir);
   llvm::sys::path::append(R2, "..", "..", Name);
+  //llvm::errs() << "R2" << R2 << "\n";
   if (llvm::sys::fs::exists(Twine(R2)))
     return std::string(R2);
+
+#ifdef LIBCXX_INSTALL_LIBRARY_DIR
+  // this is required to support -print-file-name=libc++.modules.json when
+  // LIBCXX_INSTALL_LIBRARY_DIR is explicitly set
+  // this is possibly deprecated in lieu of -print-library-module-manifest-path,
+  // in which case it can be removed
+  if (llvm::sys::path::is_absolute(LIBCXX_INSTALL_LIBRARY_DIR)) {
+    SmallString<128> C(LIBCXX_INSTALL_LIBRARY_DIR);
+    llvm::sys::path::append(C, Name);
+    llvm::errs() << "ABS " << C << "\n";
+    if (llvm::sys::fs::exists(Twine(C)))
+      return std::string(C);
+
+  } else {
+    // based on code in ToolChain::getStdlibPath(), this seems to be the most viable way 
+    // way to determine CMAKE_INSTALL_PREFIX.
+    SmallString<128> C(Dir);
+    llvm::sys::path::append(C, "..");
+    llvm::sys::path::append(C, LIBCXX_INSTALL_LIBRARY_DIR);
+    llvm::sys::path::append(C, Name);
+
+    llvm::errs() << "REL " << C << "\n";
+    if (llvm::sys::fs::exists(Twine(C)))
+    return std::string(C);
+  }
+#if 0
+  SmallString<128> REL(ResourceDir);
+  llvm::sys::path::append(REL, "..", "..", "..");
+  llvm::sys::path::append(REL, LIBCXX_INSTALL_LIBRARY_DIR, Name);
+  //llvm::errs() << "REL " << REL << "\n";
+  //llvm::errs() << "LIBCXX_INSTALL_LIBRARY_DIR " << LIBCXX_INSTALL_LIBRARY_DIR<< "\n";
+  if (llvm::sys::fs::exists(Twine(REL)))
+    return std::string(REL);
+#endif
+#endif
 
   return std::string(Name);
 }
@@ -6690,6 +6719,7 @@ std::string Driver::GetStdModuleManifestPath(const Compilation &C,
       return {};
     };
 
+#if 0
 #ifdef LIBCXX_INSTALL_LIBRARY_DIR
     // IF there's an explicitly configured library dir, look
     // directly for the manifest there, rather than searching for libc++.*
@@ -6697,6 +6727,7 @@ std::string Driver::GetStdModuleManifestPath(const Compilation &C,
     llvm::sys::path::append(configuredPath, filename);
     if (TC.getVFS().exists(configuredPath))
       return static_cast<std::string>(configuredPath);
+#endif
 #endif
 
     if (std::optional<std::string> result = evaluate("libc++.so"); result)
