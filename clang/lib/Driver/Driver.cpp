@@ -6585,8 +6585,8 @@ std::string Driver::GetFilePath(StringRef Name, const ToolChain &TC) const {
   if (llvm::sys::fs::exists(Twine(R2)))
     return std::string(R2);
 
-  // search Libc++ install dir (if configured) 
-  // this is required for find the .modules.json manifest when libc++ is 
+  // search Libc++ install dir (if configured)
+  // this is required for find the .modules.json manifest when libc++ is
   // installed in a non-default location
   SmallString<128> L(LibCxxDir);
   llvm::sys::path::append(L, Name);
@@ -6663,8 +6663,6 @@ std::string Driver::GetStdModuleManifestPath(const Compilation &C,
 
   switch (TC.GetCXXStdlibType(C.getArgs())) {
   case ToolChain::CST_Libcxx: {
-    const char* filename = "libc++.modules.json";
-
     auto evaluate = [&](const char *library) -> std::optional<std::string> {
       std::string lib = GetFilePath(library, TC);
 
@@ -6683,23 +6681,12 @@ std::string Driver::GetStdModuleManifestPath(const Compilation &C,
 
       SmallString<128> path(lib.begin(), lib.end());
       llvm::sys::path::remove_filename(path);
-      llvm::sys::path::append(path, filename);
+      llvm::sys::path::append(path, "libc++.modules.json");
       if (TC.getVFS().exists(path))
-          return static_cast<std::string>(path);
+        return static_cast<std::string>(path);
 
       return {};
     };
-
-#if 0
-#ifdef LIBCXX_INSTALL_LIBRARY_DIR
-    // IF there's an explicitly configured library dir, look
-    // directly for the manifest there, rather than searching for libc++.*
-    SmallString<128> configuredPath(LIBCXX_INSTALL_LIBRARY_DIR);
-    llvm::sys::path::append(configuredPath, filename);
-    if (TC.getVFS().exists(configuredPath))
-      return static_cast<std::string>(configuredPath);
-#endif
-#endif
 
     if (std::optional<std::string> result = evaluate("libc++.so"); result)
       return *result;
