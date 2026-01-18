@@ -244,7 +244,7 @@ std::string clang::GetLibCxxPath(StringRef BinaryPath) {
   if (llvm::sys::path::is_absolute(LIBCXX_INSTALL_LIBRARY_DIR)) {
     return LIBCXX_INSTALL_LIBRARY_DIR;
   } else {
-    // based on ToolChain::getStdlibPath(), this seems to be the way 
+    // based on ToolChain::getStdlibPath(), this seems to be the way
     // to determine CMAKE_INSTALL_PREFIX.
     auto Dir = std::string(llvm::sys::path::parent_path(BinaryPath));
     SmallString<128> C(Dir);
